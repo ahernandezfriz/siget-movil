@@ -1,6 +1,7 @@
 // src/App.jsx
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import LoginScreen from './components/LoginScreen';
 import Dashboard from './components/Dashboard';
 import PatientDetail from './components/PatientDetail';
@@ -14,6 +15,23 @@ const PrivateRoute = ({ children }) => {
 function App() {
     return (
         <Router>
+            <Toaster
+                position="top-right"
+                toastOptions={{
+                    success: {
+                        style: {
+                            background: '#28a745',
+                            color: 'white',
+                        },
+                    },
+                    error: {
+                        style: {
+                            background: '#dc3545',
+                            color: 'white',
+                        },
+                    },
+                }}
+            />
             <Routes>
                 {/* La ruta de Login queda fuera del Layout */}
                 <Route path="/" element={<LoginScreen />} />

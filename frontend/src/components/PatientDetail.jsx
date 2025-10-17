@@ -1,6 +1,7 @@
 // src/components/PatientDetail.jsx
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import NewSessionForm from './NewSessionForm';
 import NewRecordForm from './NewRecordForm';
 import { downloadPdf } from '../utils/downloadHelper';
@@ -110,12 +111,16 @@ function PatientDetail() {
             }
 
             // 2. Si la eliminación fue exitosa, refrescar los datos
-            alert('Sesión eliminada exitosamente.');
-            fetchPatientDetail(); // Vuelve a cargar toda la información del paciente
+            //alert('Sesión eliminada exitosamente.');
+            //fetchPatientDetail(); // Vuelve a cargar toda la información del paciente
+
+            toast.success('Sesión eliminada exitosamente.');
+            fetchPatientDetail();
 
         } catch (err) {
             console.error('Error al eliminar la sesión:', err);
-            alert(`Error: ${err.message}`);
+            //alert(`Error: ${err.message}`);
+            toast.error(`Error: ${err.message}`);
         }
     };
 
