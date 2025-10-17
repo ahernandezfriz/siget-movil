@@ -1,0 +1,10 @@
+# Ignorar dependencias de Node
+node_modules/
+
+# Ignorar archivos de entorno (contienen secretos)
+.env
+
+# Archivos de log y temporales
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
