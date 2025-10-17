@@ -479,3 +479,17 @@ Editar paciente*/
 .action-link.delete {
   color: #e74c3c; /* Color rojo para la acción de eliminar */
 }
+
+/* Estilos para el Buscador */
+.search-bar-container {
+  margin-bottom: 20px;
+}
+
+.search-input {
+  width: 100%;
+  padding: 10px 15px;
+  font-size: 16px;
+  border: 1px solid var(--border-color, #dee2e6);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
