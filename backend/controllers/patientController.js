@@ -112,35 +112,51 @@ const getPatientHistory = async (req, res) => {
 
 
 
-// @desc    Actualizar la ficha de un paciente (datos del apoderado, etc.)
+// @desc    Actualizar los detalles de la ficha de un paciente
 // @route   PUT /api/patients/:id
 // @access  Private
 const updatePatientDetails = async (req, res) => {
-    const { id } = req.params;
-    const { nombre_completo, rut, fecha_nacimiento, nombre_apoderado, telefono_apoderado, email_apoderado } = req.body;
+    const { id: patientId } = req.params;
+    const profesional_id = req.user.id;
+    const {
+        nombre_completo,
+        rut,
+        fecha_nacimiento,
+        nombre_apoderado,
+        telefono_apoderado,
+        email_apoderado
+    } = req.body;
+
+    if (!nombre_completo || !rut) {
+        return res.status(400).json({ error: 'Nombre completo y RUT son obligatorios.' });
+    }
 
     try {
         const query = `
-            UPDATE Pacientes SET
-                nombre_completo = COALESCE($1, nombre_completo),
-                rut = COALESCE($2, rut),
-                fecha_nacimiento = COALESCE($3, fecha_nacimiento),
-                nombre_apoderado = COALESCE($4, nombre_apoderado),
-                telefono_apoderado = COALESCE($5, telefono_apoderado),
-                email_apoderado = COALESCE($6, email_apoderado)
-            WHERE id = $7 RETURNING *;
+            UPDATE Pacientes
+            SET nombre_completo = $1, rut = $2, fecha_nacimiento = $3,
+                nombre_apoderado = $4, telefono_apoderado = $5, email_apoderado = $6
+            WHERE id = $7 AND profesional_id = $8
+            RETURNING *;
         `;
-        const updatedPatient = await pool.query(query, [nombre_completo, rut, fecha_nacimiento, nombre_apoderado, telefono_apoderado, email_apoderado, id]);
 
-        if (updatedPatient.rows.length === 0) {
-            return res.status(404).json({ error: 'Paciente no encontrado.' });
+        const result = await pool.query(query, [
+            nombre_completo, rut, fecha_nacimiento, nombre_apoderado,
+            telefono_apoderado, email_apoderado, patientId, profesional_id
+        ]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Paciente no encontrado o no autorizado para editar.' });
         }
-        res.status(200).json(updatedPatient.rows[0]);
+
+        res.status(200).json(result.rows[0]);
+
     } catch (err) {
-        if (err.code === '23505') { // RUT duplicado
-            return res.status(409).json({ error: 'El RUT ya está en uso.' });
+        // Reincorporamos el manejo de error específico para RUT duplicado
+        if (err.code === '23505' && err.constraint === 'pacientes_rut_key') {
+            return res.status(409).json({ error: 'El RUT ya está en uso por otro paciente.' });
         }
-        console.error('Error al actualizar la ficha del paciente:', err);
+        console.error('Error al actualizar paciente:', err);
         res.status(500).json({ error: 'Error interno del servidor.' });
     }
 };

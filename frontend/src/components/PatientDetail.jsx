@@ -4,6 +4,7 @@ import { useParams, Link } from 'react-router-dom';
 import NewSessionForm from './NewSessionForm';
 import NewRecordForm from './NewRecordForm';
 import { downloadPdf } from '../utils/downloadHelper';
+import EditPatientForm from './EditPatientForm';
 
 function PatientDetail() {
     const { id } = useParams();
@@ -12,6 +13,7 @@ function PatientDetail() {
     const [error, setError] = useState('');
     const [formVisibleForRecord, setFormVisibleForRecord] = useState(null);
     const [isRecordFormVisible, setIsRecordFormVisible] = useState(false);
+    const [isEditFormVisible, setIsEditFormVisible] = useState(false);
 
     // 1. Mueve useCallback al nivel superior del componente, no dentro de useEffect.
     const fetchPatientDetail = useCallback(async () => {
@@ -67,6 +69,11 @@ function PatientDetail() {
         fetchPatientDetail(); // Refresca los datos
     };
 
+    const handlePatientUpdated = () => {
+        setIsEditFormVisible(false); // Cierra el modal
+        fetchPatientDetail(); // Refresca los datos de la página
+    };
+
    
 
     if (loading) return <p>Cargando detalles del paciente...</p>;
@@ -81,7 +88,13 @@ function PatientDetail() {
             <Link to="/dashboard" className="back-link">&larr; Volver al Dashboard</Link>
             
             <div className="patient-card">
-                <h2>{ficha_paciente.nombre_completo}</h2>
+                
+                <div className="patient-card-header"> {/* 3. Nuevo div para alinear el botón */}
+                    <h2>{ficha_paciente.nombre_completo}</h2>
+                    <button onClick={() => setIsEditFormVisible(true)} className="edit-btn">Editar Ficha</button>
+                </div>
+                
+                {/*<h2>{ficha_paciente.nombre_completo}</h2>*/}
                 <p><strong>RUT:</strong> {ficha_paciente.rut}</p>
                 <p><strong>Fecha de Nacimiento:</strong> {new Date(ficha_paciente.fecha_nacimiento).toLocaleDateString('es-CL')}</p>
                 <hr />
@@ -90,6 +103,15 @@ function PatientDetail() {
                 <p><strong>Teléfono Apoderado:</strong> {ficha_paciente.telefono_apoderado}</p>
                
             </div>
+
+            {/* 4. Renderizar el modal de edición */}
+            {isEditFormVisible && (
+                <EditPatientForm
+                    patient={ficha_paciente}
+                    onPatientUpdated={handlePatientUpdated}
+                    onCancel={() => setIsEditFormVisible(false)}
+                />
+            )}
 
             {/* Sección para añadir un nuevo registro académico (Ahora está aquí) */}
             <div className="add-record-section">

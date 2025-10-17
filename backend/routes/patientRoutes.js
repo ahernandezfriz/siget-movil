@@ -9,6 +9,8 @@ const {
     deletePatient,
     addAcademicRecord       
 } = require('../controllers/patientController');
+
+
 const { protect } = require('../middleware/authMiddleware');
 
 router.use(protect);
