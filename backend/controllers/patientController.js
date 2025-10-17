@@ -62,21 +62,30 @@ const createPatientAndFirstRecord = async (req, res) => {
 // @access  Private
 const getMyCurrentPatients = async (req, res) => {
     const profesional_id = req.user.id;
-    const currentYear = new Date().getFullYear();
+    // La variable currentYear ya no es necesaria en esta consulta.
 
     try {
-        // Unimos ambas tablas para obtener la lista de pacientes de este año
         const query = `
-            SELECT p.id, p.nombre_completo, p.rut, ra.curso, ra.diagnostico, ra.año
+            SELECT DISTINCT ON (p.id)
+                p.id,
+                p.nombre_completo,
+                p.rut,
+                ra.curso,
+                ra.año
             FROM Pacientes p
             JOIN Registros_Academicos ra ON p.id = ra.paciente_id
-            WHERE ra.profesional_id = $1 AND ra.año = $2
-            ORDER BY p.nombre_completo ASC;
+            WHERE p.profesional_id = $1
+            ORDER BY p.id, ra.año DESC;
         `;
-        const patients = await pool.query(query, [profesional_id, currentYear]);
+
+        // --- INICIO DE LA CORRECCIÓN ---
+        // Ahora solo pasamos un parámetro, que corresponde al $1 en la consulta.
+        const patients = await pool.query(query, [profesional_id]);
+        // --- FIN DE LA CORRECCIÓN ---
+
         res.status(200).json(patients.rows);
     } catch (err) {
-        console.error('Error al obtener pacientes actuales:', err);
+        console.error('Error al obtener pacientes:', err);
         res.status(500).json({ error: 'Error interno del servidor.' });
     }
 };
