@@ -244,8 +244,12 @@ a { color: inherit; }
 
 .add-session-btn {
   background-color: #007bff;
-  color: white;
+  color: #fff;
   font-size: 14px;
+  padding: 6px 12px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
 }
 
 
@@ -404,7 +408,7 @@ a { color: inherit; }
 .download-btn {
   background-color: #6c757d; /* Gris */
   color: white;
-  font-size: 12px;
+  font-size: 14px;
   padding: 6px 12px;
   border: none;
   border-radius: 4px;
@@ -432,7 +436,7 @@ Editar paciente*/
 .edit-btn {
   background-color: #ffc107; /* Amarillo */
   color: #212529;
-  font-size: 12px;
+  font-size: 14px;
   padding: 6px 12px;
   border: none;
   border-radius: 4px;
@@ -441,4 +445,37 @@ Editar paciente*/
 
 .edit-btn:hover {
   background-color: #e0a800;
+}
+
+/* Reemplaza los estilos existentes con estos */
+
+.session-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.session-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* Espacio entre "Editar", "|" y "Eliminar" */
+  color: #6c757d; /* Color gris para el separador */
+}
+
+.action-link {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #007bff; /* Color azul de enlace */
+  padding: 0;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.action-link:hover {
+  text-decoration: underline;
+}
+
+.action-link.delete {
+  color: #e74c3c; /* Color rojo para la acción de eliminar */
 }

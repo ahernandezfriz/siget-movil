@@ -124,70 +124,86 @@ const deleteSession = async (req, res) => {
     }
 };
 
-// @desc    Actualizar una sesión completa (incluyendo sus actividades)
+
+// @desc    Actualizar una sesión y sus actividades
 // @route   PUT /api/sessions/:sessionId
 // @access  Private
 const updateSessionWithActivities = async (req, res) => {
+    // --- PUNTOS DE CONTROL ---
+    console.log("\n[DEBUG] 1. Entrando a la función 'updateSessionWithActivities'.");
+    
     const { sessionId } = req.params;
     const { fecha_sesion, observaciones, actividades } = req.body;
     const profesional_id = req.user.id;
 
-    if (!fecha_sesion || !actividades || !Array.isArray(actividades)) {
-        return res.status(400).json({ error: 'Fecha y un array de actividades son obligatorios.' });
+    console.log(`[DEBUG] 2. Datos recibidos para la sesión #${sessionId}:`, { fecha_sesion, observaciones, actividades_count: actividades.length });
+
+    if (!fecha_sesion || !actividades) {
+        return res.status(400).json({ error: 'La fecha y las actividades son obligatorias.' });
     }
 
     const client = await pool.connect();
-    try {
-        // <-- CORRECCIÓN DE SEGURIDAD: Verificar la pertenencia antes de hacer nada
-        const recordCheck = await client.query(
-            `SELECT 1 FROM Sesiones s
-             JOIN Registros_Academicos ra ON s.registro_id = ra.id
-             WHERE s.id = $1 AND ra.profesional_id = $2`,
-            [sessionId, profesional_id]
-        );
-        if (recordCheck.rows.length === 0) {
-            return res.status(404).json({ error: 'Sesión no encontrada o no autorizada.' });
-        }
-        // Fin de la corrección
 
+    try {
+        console.log("[DEBUG] 3. A punto de iniciar la transacción (BEGIN).");
         await client.query('BEGIN');
 
-        const sesionQuery = `
-            UPDATE Sesiones SET
-                fecha_sesion = $1,
-                observaciones = $2
-            WHERE id = $3 RETURNING *;
-        `;
-        await client.query(sesionQuery, [fecha_sesion, observaciones, sessionId]);
-
-        await client.query('DELETE FROM Actividades WHERE sesion_id = $1', [sessionId]);
-
-        if (actividades.length > 0) {
-            const actividadesInsertQuery = `
-                INSERT INTO Actividades (sesion_id, descripcion_actividad, evaluacion)
-                SELECT $1, d.descripcion_actividad, d.evaluacion
-                FROM json_to_recordset($2) AS d(descripcion_actividad TEXT, evaluacion INTEGER);
-            `;
-            await client.query(actividadesInsertQuery, [sessionId, JSON.stringify(actividades)]);
-        }
-
-        const finalResult = await client.query(
-            `SELECT s.*,
-                (SELECT json_agg(a.*) FROM Actividades a WHERE a.sesion_id = s.id) as actividades
-             FROM Sesiones s WHERE s.id = $1`, [sessionId]
+        // Paso 1: Verificar que el profesional es dueño de la sesión
+        const checkOwner = await client.query(
+            `SELECT ra.profesional_id FROM Sesiones s JOIN Registros_Academicos ra ON s.registro_id = ra.id WHERE s.id = $1`,
+            [sessionId]
         );
+        if (checkOwner.rows.length === 0 || checkOwner.rows[0].profesional_id !== profesional_id) {
+            throw new Error('No autorizado');
+        }
+        console.log("[DEBUG] 4. Verificación de propiedad exitosa.");
 
+        // Paso 2: Actualizar la tabla de Sesiones
+        const updateSessionQuery = `UPDATE Sesiones SET fecha_sesion = $1, observaciones = $2 WHERE id = $3 RETURNING *;`;
+        const updatedSession = await client.query(updateSessionQuery, [fecha_sesion, observaciones, sessionId]);
+        console.log("[DEBUG] 5. Tabla 'Sesiones' actualizada.");
+
+        // Paso 3: Eliminar las actividades antiguas
+        await client.query('DELETE FROM Actividades WHERE sesion_id = $1', [sessionId]);
+        console.log("[DEBUG] 6. Actividades antiguas eliminadas.");
+
+        // Paso 4: Insertar las nuevas actividades
+        // Preparamos los datos para la inserción múltiple
+        const activityValues = actividades.map(act => [sessionId, act.descripcion_actividad, act.evaluacion]);
+        const insertActivitiesQuery = 'INSERT INTO Actividades (sesion_id, descripcion_actividad, evaluacion) SELECT * FROM UNNEST($1::int[], $2::text[], $3::int[])';
+        
+        // Separamos los arrays para UNNEST
+        const sesionIds = activityValues.map(v => v[0]);
+        const descripciones = activityValues.map(v => v[1]);
+        const evaluaciones = activityValues.map(v => v[2]);
+        
+        await client.query(insertActivitiesQuery, [sesionIds, descripciones, evaluaciones]);
+        console.log("[DEBUG] 7. Nuevas actividades insertadas.");
+
+        // Si todo va bien, confirmar la transacción
         await client.query('COMMIT');
-        res.status(200).json(finalResult.rows[0]);
+        console.log("[DEBUG] 8. Transacción confirmada (COMMIT).");
+        
+        res.status(200).json(updatedSession.rows[0]);
+
     } catch (err) {
+        // Si algo falla, revertir todos los cambios
         await client.query('ROLLBACK');
-        console.error('Error al actualizar la sesión:', err);
+        
+        // --- ESTE ES EL ERROR QUE NO ESTAMOS VIENDO ---
+        console.error("❌ [DEBUG] ERROR ATRAPADO. Revirtiendo transacción (ROLLBACK).", err);
+        
+        if (err.message === 'No autorizado') {
+            return res.status(403).json({ error: 'No tienes permiso para editar esta sesión.' });
+        }
         res.status(500).json({ error: 'Error interno del servidor.' });
+
     } finally {
+        // Liberar la conexión con la base de datos
         client.release();
+        console.log("[DEBUG] 9. Conexión con la base de datos liberada.");
     }
 };
-
 
 
 // @desc    Exportar una sesión específica a PDF

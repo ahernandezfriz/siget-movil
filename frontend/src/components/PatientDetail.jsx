@@ -5,6 +5,7 @@ import NewSessionForm from './NewSessionForm';
 import NewRecordForm from './NewRecordForm';
 import { downloadPdf } from '../utils/downloadHelper';
 import EditPatientForm from './EditPatientForm';
+import EditSessionForm from './EditSessionForm';
 
 function PatientDetail() {
     const { id } = useParams();
@@ -14,6 +15,8 @@ function PatientDetail() {
     const [formVisibleForRecord, setFormVisibleForRecord] = useState(null);
     const [isRecordFormVisible, setIsRecordFormVisible] = useState(false);
     const [isEditFormVisible, setIsEditFormVisible] = useState(false);
+    const [editingSession, setEditingSession] = useState(null);
+
 
     // 1. Mueve useCallback al nivel superior del componente, no dentro de useEffect.
     const fetchPatientDetail = useCallback(async () => {
@@ -72,6 +75,48 @@ function PatientDetail() {
     const handlePatientUpdated = () => {
         setIsEditFormVisible(false); // Cierra el modal
         fetchPatientDetail(); // Refresca los datos de la página
+    };
+
+    const handleEditSession = (session) => {
+        // 3. Al hacer clic en editar, guardamos la sesión completa en el estado
+        console.log("Datos de la sesión al hacer clic en Editar:", session);
+        setEditingSession(session);
+    };
+    const handleSessionUpdated = () => {
+        setEditingSession(null); // Cierra el modal de edición
+        fetchPatientDetail(); // Refresca los datos para mostrar los cambios
+    };
+
+
+
+    const handleDeleteSession = async (sessionIdToDelete) => {
+        // 1. Mostrar un diálogo de confirmación
+        if (!window.confirm('¿Estás seguro de que quieres eliminar esta sesión? Esta acción no se puede deshacer.')) {
+            return; // Si el usuario cancela, no hacer nada
+        }
+
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(`http://localhost:4000/api/sessions/${sessionIdToDelete}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || 'No se pudo eliminar la sesión.');
+            }
+
+            // 2. Si la eliminación fue exitosa, refrescar los datos
+            alert('Sesión eliminada exitosamente.');
+            fetchPatientDetail(); // Vuelve a cargar toda la información del paciente
+
+        } catch (err) {
+            console.error('Error al eliminar la sesión:', err);
+            alert(`Error: ${err.message}`);
+        }
     };
 
    
@@ -138,6 +183,15 @@ function PatientDetail() {
                         />
                     )}
 
+                    {/* Renderizar el modal de edición si hay una sesión seleccionada */}
+                    {editingSession && (
+                        <EditSessionForm
+                            sessionToEdit={editingSession}
+                            onSessionUpdated={handleSessionUpdated}
+                            onCancel={() => setEditingSession(null)}
+                        />
+                    )}
+
                     <h4>Año {record.año} - {record.curso}</h4>
                     <div className="header-buttons"> {/* 2. Contenedor para los botones */}
                             {/* Botón para el PDF Consolidado */}
@@ -162,7 +216,28 @@ function PatientDetail() {
                     {record.sesiones && record.sesiones.length > 0 ? (
                         record.sesiones.map(sesion => (
                             <div key={sesion.id} className="session-card">
-                                <h5>Sesión del {new Date(sesion.fecha_sesion).toLocaleDateString('es-CL')}</h5>
+                                {/* 2. Modificar la cabecera de la sesión */}
+                                <div className="session-header">
+                                    <h5>Sesión del {new Date(sesion.fecha_sesion).toLocaleDateString('es-CL')}</h5>
+                                    
+                                    {/* Contenedor para los nuevos enlaces de acción */}
+                                    <div className="session-actions">
+                                        <button 
+                                            onClick={() => handleEditSession(sesion)}
+                                            className="action-link"
+                                        >
+                                            Editar
+                                        </button>
+                                        <span>|</span>
+                                        <button 
+                                            onClick={() => handleDeleteSession(sesion.id)}
+                                            className="action-link delete"
+                                        >
+                                            Eliminar
+                                        </button>
+                                    </div>
+                                </div>
+                                {/*<h5>Sesión del {new Date(sesion.fecha_sesion).toLocaleDateString('es-CL')}</h5>*/}
                                 <p><strong>Observaciones:</strong> {sesion.observaciones || 'Sin observaciones.'}</p>
                                 
                                 <h6>Actividades:</h6>
